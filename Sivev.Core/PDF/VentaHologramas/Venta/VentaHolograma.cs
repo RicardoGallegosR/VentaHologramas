@@ -82,7 +82,7 @@ namespace Sivev.Core.PDF.VentaHolograma.Venta {
             var rem = sec.AddParagraph($"REMISIÓN: {_cvv.Remision}");
             rem.Format.Alignment = ParagraphAlignment.Right;
 
-            var fecha = sec.AddParagraph($"{DateTime.Today.ToString("D").ToUpper()}.");
+            var fecha = sec.AddParagraph($"{_cvv.FechaRemision.ToString("D").ToUpper()}.");
             fecha.Format.Alignment = ParagraphAlignment.Right;
             fecha.Format.SpaceAfter = "0.5cm";
 

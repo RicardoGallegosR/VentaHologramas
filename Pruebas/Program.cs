@@ -139,7 +139,7 @@ namespace TestPDF {
             // ==== Datos de prueba ====
             var cv = new CentroVerificacion {
                 Remision = 5123,
-                FechaRemision = DateTime.Now,
+                FechaRemision = DateTime.Today,
                 Direccion = "Av. Siempre Viva #123, CDMX",
                 Centro = "CV-01",
                 RazonSocial = "Verificentros del Centro S.A. de C.V.",

@@ -6,18 +6,13 @@ using Sivev.Core.PDF.VentaHolograma.Venta;
 using System.IO;
 
 namespace Sivev.Core.PDF.VentaHologramas.Comisa {
-    public class CentroVerificacion {
-        public DateTime FechaRemision { get; set; }
+    public class SEDEMA {
         public string Direccion { get; set; }
-        public string Centro { get; set; }
-        public string RazonSocial { get; set; }
-        public string RFC { get; set; }
-        public string CentroVerificacionName { get; set; }
     }
 
-    public class LineaCapturaItem {
+    public class COMISA {
         public int Cantidad { get; set; }
-        public string Concepto { get; set; }
+        public string tipo { get; set; }
         public int FolioInicial { get; set; }
         public int FolioFinal { get; set; }
         public decimal Precio { get; set; }
