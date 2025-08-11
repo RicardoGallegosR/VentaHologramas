@@ -2,6 +2,7 @@
 using MigraDoc.DocumentObjectModel.Shapes;
 using MigraDoc.DocumentObjectModel.Tables;
 using MigraDoc.Rendering;
+using Sivev.Core.PDF.VentaHologramas.Comisa;
 using System.IO;
 
 
@@ -16,26 +17,36 @@ namespace Sivev.Core.PDF.VentaHolograma.Venta {
         public string CentroVerificacionName { get; set; }
     }
 
-    public class LineaCapturaItem {
+    public class CertificadoItem {
         public int Cantidad { get; set; }
-        public string Concepto { get; set; }
+        public string TipoHolograma { get; set; }
         public int FolioInicial { get; set; }
         public int FolioFinal { get; set; }
-        public decimal Precio { get; set; }
+    }
+
+    public class LineaCapturaItem {
+        public string LC { get; set; }
+        public decimal Precio { get; set; }     // unitario o total (según tu operación)
+        //public decimal Importe { get; set; }    // si Precio es unitario, puedes calcular aquí
+        
+        // Si prefieres cálculo:
+        public int Cantidad { get; set; } = 1;
         public decimal Importe => Cantidad * Precio;
     }
 
     public class VentaHolograma {
         private readonly CentroVerificacion _cvv;
-        private readonly List<LineaCapturaItem> _items;
+        private readonly List<CertificadoItem> _certificados;
+        private readonly List<LineaCapturaItem> _lineas;
         private readonly string _headerPath;
         private readonly string _footerPath;
 
-        public VentaHolograma(CentroVerificacion cvv, IEnumerable<LineaCapturaItem> items, 
+        public VentaHolograma(CentroVerificacion cvv, IEnumerable<LineaCapturaItem> itemsLC, List<CertificadoItem> itemsCertificado,
                               string header = @"C:\Logos\header.png",
                               string footer = @"C:\Logos\footer.png") {
             _cvv = cvv;
-            _items = items?.ToList() ?? new();
+            _lineas = itemsLC?.ToList() ?? new();
+            _certificados = itemsCertificado?.ToList() ?? new();
             _headerPath = header;
             _footerPath = footer;
         }
@@ -79,22 +90,31 @@ namespace Sivev.Core.PDF.VentaHolograma.Venta {
             }
 
             // ===== CUERPO =====
+            /*
             var rem = sec.AddParagraph($"REMISIÓN: {_cvv.Remision}");
             rem.Format.Alignment = ParagraphAlignment.Right;
 
-            var fecha = sec.AddParagraph($"{_cvv.FechaRemision.ToString("D").ToUpper()}.");
+            var fecha = sec.AddParagraph($"{_cvv.FechaRemision.ToString("D")}");
             fecha.Format.Alignment = ParagraphAlignment.Right;
             fecha.Format.SpaceAfter = "0.5cm";
 
-            var titulo = sec.AddParagraph("ORDEN DE COMPRA");
+
+            */
+            sec.AddParagraph().AddLineBreak();
+            sec.AddParagraph().AddLineBreak();
+            var titulo = sec.AddParagraph($"COMPROBANTE DE ENTREGA DE CERTIFICADOS – REMISIÓN: {_cvv.Remision}");
             titulo.Format.Alignment = ParagraphAlignment.Center;
             titulo.Format.Font.Size = 14; titulo.Format.Font.Bold = true;
             titulo.Format.SpaceAfter = "0.5cm";
+            
+            var fecha = sec.AddParagraph($"Ciudad de México, {_cvv.FechaRemision.ToString("D")}");
+            fecha.Format.Alignment = ParagraphAlignment.Right;
+            fecha.Format.SpaceAfter = "0.5cm";
 
             // Datos Fiscales
             sec.AddParagraph("DATOS FISCALES").Format.Font.Bold = true;
             var t = sec.AddTable(); t.Borders.Width = 0.5;
-            t.AddColumn("4cm"); t.AddColumn("10cm");
+            t.AddColumn("4cm"); t.AddColumn("14cm");
             void Row(string e, string v) {
                 var rr = t.AddRow();
                 rr.Cells[0].AddParagraph(e).Format.Font.Bold = true;
@@ -109,39 +129,79 @@ namespace Sivev.Core.PDF.VentaHolograma.Venta {
             sec.AddParagraph().AddLineBreak();
             sec.AddParagraph().AddLineBreak();
 
-            // Líneas de captura
-            sec.AddParagraph("LÍNEAS DE CAPTURA").Format.Font.Bold = true;
-            var tLC = sec.AddTable(); tLC.Borders.Width = 0.5;
-            tLC.AddColumn("2cm");   // Cantidad
-            tLC.AddColumn("5.5cm"); // Concepto
-            tLC.AddColumn("3cm");   // Folio inicial
-            tLC.AddColumn("2.5cm"); // Folio final
-            tLC.AddColumn("2.5cm"); // Precio
-            tLC.AddColumn("2.5cm"); // Importe
 
-            var hdr = tLC.AddRow();
-            string[] heads = { "CANTIDAD","CONCEPTO","FOLIO INICIAL","FOLIO FINAL","PRECIO","IMPORTE" };
-            for (int i = 0; i < heads.Length; i++) {
-                hdr.Cells[i].AddParagraph(heads[i]).Format.Font.Bold = true;
+
+            // ===== 1) ENTREGA DE CERTIFICADOS =====
+            sec.AddParagraph("ENTREGA DE CERTIFICADOS").Format.Font.Bold = true;
+
+            var tEnt = sec.AddTable();
+            tEnt.Borders.Width = 0.5;
+            tEnt.AddColumn("2cm");   // Cantidad
+            tEnt.AddColumn("10cm");   // Tipo de holograma
+            tEnt.AddColumn("3cm");   // Folio inicial
+            tEnt.AddColumn("3cm");   // Folio final
+
+            var hdrEnt = tEnt.AddRow();
+            string[] headsEnt = { "CANTIDAD","TIPO DE HOLOGRAMA","FOLIO INICIAL","FOLIO FINAL" };
+            for (int i = 0; i < headsEnt.Length; i++) {
+                var p = hdrEnt.Cells[i].AddParagraph(headsEnt[i]);
+                hdrEnt.Cells[i].Format.Font.Bold = true;
+                p.Format.Alignment = ParagraphAlignment.Center;
+            }
+
+            // _certificados: lista con Cantidad, TipoHolograma, FolioInicial, FolioFinal
+            foreach (var c in _certificados) {
+                var r = tEnt.AddRow();
+                r.Cells[0].AddParagraph(c.Cantidad.ToString()).Format.Alignment = ParagraphAlignment.Right;
+                r.Cells[1].AddParagraph(c.TipoHolograma ?? "");
+                r.Cells[2].AddParagraph(c.FolioInicial.ToString()).Format.Alignment = ParagraphAlignment.Right;
+                r.Cells[3].AddParagraph(c.FolioFinal.ToString()).Format.Alignment = ParagraphAlignment.Right;
+            }
+
+            // Espacio entre tablas
+            sec.AddParagraph().Format.SpaceAfter = "0.4cm";
+
+
+            // ===== 2) LÍNEAS DE CAPTURA =====
+            sec.AddParagraph("LÍNEAS DE CAPTURA").Format.Font.Bold = true;
+
+            var tLC = sec.AddTable();
+            tLC.Borders.Width = 0.5;
+            tLC.AddColumn("12cm");  // Línea de captura
+            tLC.AddColumn("3cm");   // Precio
+            tLC.AddColumn("3cm");   // Importe
+
+            var hdrLC = tLC.AddRow();
+            string[] headsLC = { "LÍNEA DE CAPTURA","PRECIO","IMPORTE" };
+            for (int i = 0; i < headsLC.Length; i++) {
+                var p = hdrLC.Cells[i].AddParagraph(headsLC[i]);
+                hdrLC.Cells[i].Format.Font.Bold = true;
+                p.Format.Alignment = ParagraphAlignment.Center;
             }
 
             decimal total = 0m;
-            foreach (var it in _items) {
+            // _lineas: lista de LineaCapturaItem (ver clase abajo)
+            foreach (var it in _lineas) {
                 var r = tLC.AddRow();
-                r.Cells[0].AddParagraph(it.Cantidad.ToString()).Format.Alignment = ParagraphAlignment.Right;
-                r.Cells[1].AddParagraph(it.Concepto ?? "");
-                r.Cells[2].AddParagraph(it.FolioInicial.ToString()).Format.Alignment = ParagraphAlignment.Right;
-                r.Cells[3].AddParagraph(it.FolioFinal.ToString()).Format.Alignment = ParagraphAlignment.Right;
-                r.Cells[4].AddParagraph(it.Precio.ToString("C")).Format.Alignment = ParagraphAlignment.Right;
-                r.Cells[5].AddParagraph(it.Importe.ToString("C")).Format.Alignment = ParagraphAlignment.Right;
+                r.Cells[0].AddParagraph(it.LC ?? "");
+                r.Cells[1].AddParagraph(it.Precio.ToString("C2")).Format.Alignment = ParagraphAlignment.Right;
+                r.Cells[2].AddParagraph(it.Importe.ToString("C2")).Format.Alignment = ParagraphAlignment.Right;
                 total += it.Importe;
             }
 
+            // Fila de TOTAL
             var tot = tLC.AddRow();
-            tot.Cells[0].MergeRight = 4;
-            tot.Cells[0].AddParagraph("TOTAL").Format.Font.Bold = true;
-            tot.Cells[5].AddParagraph(total.ToString("C")).Format.Font.Bold = true;
-            tot.Cells[5].Format.Alignment = ParagraphAlignment.Right;
+            tot.Borders.Top.Width = 0.5;
+            tot.Cells[0].MergeRight = 1;
+            tot.Cells[0].AddParagraph("TOTAL").Format.Alignment = ParagraphAlignment.Right;
+            tot.Cells[2].AddParagraph(total.ToString("C2")).Format.Alignment = ParagraphAlignment.Right;
+            tot.Cells[0].Format.Font.Bold = true;
+            tot.Cells[2].Format.Font.Bold = true;
+
+
+
+
+
 
             // ===== FOOTER =====
             var footer = sec.Footers.Primary;

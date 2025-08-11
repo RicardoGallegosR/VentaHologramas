@@ -85,6 +85,12 @@ class Program {
 }
 */
 
+
+
+
+
+
+/*                                          PRUEBAS VENTA DE CERTFICADOS
 using MigraDoc.DocumentObjectModel;
 using MigraDoc.Rendering;
 using PdfSharp.Fonts;
@@ -149,28 +155,42 @@ namespace TestPDF {
 
             var lineas = new List<LineaCapturaItem> {
                 new LineaCapturaItem {
+                    LC = "Linea Captura1",
                     Cantidad = 10,
-                    Concepto = "Hologramas Tipo 1",
-                    FolioInicial = 1001,
-                    FolioFinal = 1010,
                     Precio = 50.0m
                 },
                 new LineaCapturaItem {
+                    LC = "Linea Captura2",
                     Cantidad = 5,
-                    Concepto = "Hologramas Tipo 2",
-                    FolioInicial = 2001,
-                    FolioFinal = 2005,
                     Precio = 75.0m
                 }
             };
 
+        var Certificados = new List<CertificadoItem> {
+                new CertificadoItem {
+                    Cantidad = 10,
+                    TipoHolograma = "Hologramas Tipo 1",
+                    FolioInicial = 1001,
+                    FolioFinal = 1010
+                },
+                new CertificadoItem {
+                    Cantidad = 5,
+                    TipoHolograma = "Hologramas Tipo 2",
+                    FolioInicial = 2001,
+                    FolioFinal = 2005
+                }
+            };
 
 
-            // ==== Crear documento y generar PDF ====
-            FontsBootstrap.Init();
+        
+
+
+
+        // ==== Crear documento y generar PDF ====
+        FontsBootstrap.Init();
 
             var doc = new Document();
-            var venta = new VentaHolograma(cv, lineas);
+            var venta = new VentaHolograma(cv, lineas,Certificados);
             
             venta.BuildPdf(doc);
 
@@ -188,3 +208,107 @@ namespace TestPDF {
        
     }
 }
+//*/
+
+
+
+
+/*                                          PRUEBAS COMISA
+using MigraDoc.DocumentObjectModel;
+using MigraDoc.Rendering;
+using PdfSharp.Fonts;
+using PdfSharp.Snippets.Font;
+//using Sivev.Core.PDF.VentaHolograma.Venta;
+using Sivev.Core.PDF.VentaHologramas.Comisa;
+using System;
+using System.Collections.Generic;
+using System.IO;
+
+
+namespace TestPDF {
+    public sealed class ArialFontResolver : IFontResolver {
+        private static readonly string FontsPath = @"C:\Windows\Fonts";
+
+        public byte[] GetFont(string faceName) {
+            // Devuelve los bytes del archivo .ttf correspondiente
+            return faceName switch {
+                "Arial#Regular" => File.ReadAllBytes(Path.Combine(FontsPath, "arial.ttf")),
+                "Arial#Bold" => File.ReadAllBytes(Path.Combine(FontsPath, "arialbd.ttf")),
+                "Arial#Italic" => File.ReadAllBytes(Path.Combine(FontsPath, "ariali.ttf")),
+                "Arial#BoldItalic" => File.ReadAllBytes(Path.Combine(FontsPath, "arialbi.ttf")),
+                _ => null
+            };
+        }
+
+        public FontResolverInfo ResolveTypeface(string familyName, bool isBold, bool isItalic) {
+            // Redirige cualquier familia (incluida "Courier New") a Arial
+            var style = (isBold, isItalic) switch
+        {
+            (false, false) => "Regular",
+            (true,  false) => "Bold",
+            (false, true ) => "Italic",
+            (true,  true ) => "BoldItalic"
+        };
+            return new FontResolverInfo($"Arial#{style}");
+        }
+    }
+    static class FontsBootstrap {
+        private static bool _init;
+        public static void Init() {
+            if (_init) return;
+            GlobalFontSettings.FontResolver = new ArialFontResolver(); // << aquí
+            _init = true;
+        }
+    }
+
+    internal class Program {
+        
+
+        static void Main(string[] args) {
+            // ==== Datos de prueba ====
+            var sedema = new SEDEMA {
+                Remision = 5123,
+                FechaRemision = DateTime.Today,
+                Direccion = "Av. Siempre Viva #123, CDMX",
+            };
+
+            var lineas = new List<COMISA> {
+                new COMISA {
+                    Cantidad = 10,
+                    Concepto = "Hologramas Tipo 1",
+                    FolioInicial = 1001,
+                    FolioFinal = 1010,
+                },
+                new COMISA {
+                    Cantidad = 5,
+                    Concepto = "Hologramas Tipo 2",
+                    FolioInicial = 2001,
+                    FolioFinal = 2005,
+                }
+            };
+
+
+
+            // ==== Crear documento y generar PDF ====
+            FontsBootstrap.Init();
+
+            var doc = new Document();
+            var venta = new IngresoCertificadosSedema(sedema, lineas);
+            
+            venta.BuildPdf(doc);
+
+            var renderer = new PdfDocumentRenderer(unicode: true) { Document = doc };
+            renderer.RenderDocument();
+
+            string downloadsPath = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
+                "Downloads"
+            );
+            string outputPath = Path.Combine(downloadsPath, "OrdenCompra_Test3.pdf");
+            renderer.PdfDocument.Save(outputPath);
+
+        }
+       
+    }
+}
+//*/
